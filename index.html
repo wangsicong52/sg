@@ -1,16 +1,13 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
 <script>
-// 自定义访问密码，改成你想要的密码
-const pagePassword = "qqsgsnt";
-const userInput = prompt("请输入访问密码，进入定时器页面：");
-if(userInput !== pagePassword){
-    document.documentElement.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-size:22px;color:red;">密码错误，禁止访问页面</div>';
+// ========== 在这里修改你的网页访问密码 ==========
+const pagePassword = "ding123456";
+const userInput = prompt("请输入页面访问密码，进入循环定时器");
+if (userInput !== pagePassword) {
+    document.documentElement.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-size:22px;color:red;font-family:Arial;">密码错误，拒绝访问</div>';
 }
 </script>
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -221,7 +218,7 @@ if(userInput !== pagePassword){
 
       let remaining = BEEP_OFFSET - (elapsed % CYCLE_TIME);
       if (remaining < 0) remaining += CYCLE_TIME;
-      statusText.innerText = `距离下一次提醒：${remaining.toFixed(1)} 秒`;
+      statusText.innerText = 距离下一次提醒：${remaining.toFixed(1)} 秒;
 
       let timeSinceBeep = (elapsed - BEEP_OFFSET) % CYCLE_TIME;
       if (timeSinceBeep < 0) timeSinceBeep += CYCLE_TIME;
