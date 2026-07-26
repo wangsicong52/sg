@@ -69,19 +69,28 @@ button:hover{
 <button onclick="pauseTimer()">暂停</button>
 <button onclick="resetTimer()">重置</button>
 </div>
-<div class="tip-text">每轮倒计时到预警值自动响铃，结束自动重启新一轮</div>
+<div class="tip-text">点击【开始循环】启动；剩余0.2秒持续响铃，倒计时归零自动重启新一轮</div>
 
 <script>
 let timer = null;
 let audioCtx = null;
 let alarmLoop = null;
-let currentLeft = 0;  // 当前剩余秒数
+let currentLeft = 0;
 let warned = false;
+
+// 初始化音频环境
+function initAudio(){
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
 
 // 蜂鸣音效
 function beep(){
-    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if(audioCtx.state === 'suspended') audioCtx.resume();
+    if(!audioCtx) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
@@ -109,7 +118,6 @@ function update(){
 
     currentLeft -= 0.05;
     if(currentLeft <= 0){
-        // 本轮结束，重置开启新一轮
         currentLeft = total;
         warned = false;
         stopAlarm();
@@ -117,7 +125,6 @@ function update(){
 
     document.getElementById('timeBox').innerText = currentLeft.toFixed(3) + " 秒";
 
-    // 到达预警条件，持续响铃
     if(warnVal > 0 && currentLeft <= warnVal && !warned){
         warned = true;
         startAlarm();
@@ -125,6 +132,7 @@ function update(){
 }
 
 function startTimer(){
+    initAudio(); // 点击按钮时初始化音频，绕过浏览器限制
     pauseTimer();
     const total = parseFloat(document.getElementById('totalSec').value);
     currentLeft = total;
