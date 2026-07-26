@@ -218,7 +218,7 @@ if (userInput !== pagePassword) {
 
       let remaining = BEEP_OFFSET - (elapsed % CYCLE_TIME);
       if (remaining < 0) remaining += CYCLE_TIME;
-      statusText.innerText = 距离下一次提醒：${remaining.toFixed(1)} 秒;
+      statusText.innerText = `距离下一次提醒：${remaining.toFixed(1)} 秒`;
 
       let timeSinceBeep = (elapsed - BEEP_OFFSET) % CYCLE_TIME;
       if (timeSinceBeep < 0) timeSinceBeep += CYCLE_TIME;
