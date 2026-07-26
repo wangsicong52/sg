@@ -1,267 +1,137 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- 强制禁止页面缓存，解决GitHub旧脚本残留 -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <title>自定义精准循环定时器</title>
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      transition: background-color 0.05s linear;
-      background-color: #f5f5f7;
-    }
-
-    body.alert {
-      background-color: #ff3b30;
-    }
-
-    .container {
-      text-align: center;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 40px;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-      min-width: 320px;
-    }
-
-    h1 {
-      margin-top: 0;
-      color: #333;
-      font-size: 1.5rem;
-      margin-bottom: 24px;
-    }
-
-    .settings {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 24px;
-      padding: 16px;
-      background: #f8f9fa;
-      border-radius: 12px;
-    }
-
-    .setting-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.95rem;
-      color: #444;
-    }
-
-    .setting-row input {
-      width: 70px;
-      padding: 6px 8px;
-      border: 1px solid #d1d1d6;
-      border-radius: 8px;
-      text-align: center;
-      font-size: 1rem;
-      font-weight: 500;
-    }
-
-    .setting-row input:focus {
-      outline: none;
-      border-color: #007aff;
-      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
-    }
-
-    .setting-row input:disabled {
-      background-color: #e5e5ea;
-      color: #8e8e93;
-    }
-
-    .status {
-      font-size: 1.1rem;
-      color: #666;
-      margin-bottom: 24px;
-      min-height: 28px;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .btn-group {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-    }
-
-    button {
-      padding: 12px 28px;
-      font-size: 1rem;
-      font-weight: 600;
-      border: none;
-      border-radius: 25px;
-      cursor: pointer;
-    }
-
-    #startBtn {
-      background-color: #34c759;
-      color: white;
-    }
-
-    #startBtn:hover:not(:disabled) {
-      background-color: #28a745;
-    }
-
-    #stopBtn {
-      background-color: #ff3b30;
-      color: white;
-    }
-
-    #stopBtn:hover:not(:disabled) {
-      background-color: #dc3545;
-    }
-
-    button:disabled {
-      background-color: #e5e5ea;
-      color: #8e8e93;
-      cursor: not-allowed;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>倒计时-可重复提醒</title>
+<style>
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Microsoft Yahei", sans-serif;
+}
+body{
+    background:#0c0c0c;
+    color:#fff;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+}
+#timeBox{
+    font-size:72px;
+    font-weight:bold;
+    color:#ff5050;
+    margin:40px 0;
+}
+.row{
+    margin:14px 0;
+}
+input{
+    font-size:19px;
+    padding:9px 14px;
+    width:460px;
+    border-radius:6px;
+    border:none;
+}
+button{
+    padding:11px 26px;
+    font-size:18px;
+    margin:0 8px;
+    border:0;
+    border-radius:6px;
+    cursor:pointer;
+    background:#ff4747;
+    color:#fff;
+}
+button:hover{
+    opacity:0.88;
+}
+.tip-text{
+    margin-top:24px;
+    color:#aaa;
+}
+</style>
 </head>
 <body>
-<div class="container">
-    <h1>自定义精准循环</h1>
-    <div class="settings">
-      <div class="setting-row">
-        <span>循环总时长 (秒)</span>
-        <input type="number" id="cycleInput" value="21.0" step="0.1" min="1">
-      </div>
-      <div class="setting-row">
-        <span>提醒触发点 (秒)</span>
-        <input type="number" id="offsetInput" value="20.8" step="0.1" min="0">
-      </div>
-    </div>
-    <div class="status" id="status">点击【开启】按钮启动计时</div>
-    <div class="btn-group">
-      <button id="startBtn">开启</button>
-      <button id="stopBtn" disabled>停止</button>
-    </div>
+<div class="row">
+目标时间：<input id="targetTime" placeholder="格式：2026-08-01 18:00:00">
+</div>
+<div class="row">
+提前提醒秒数：<input id="warnSec" value="60" placeholder="剩余多少秒提醒">
 </div>
 
+<div id="timeBox">00天 00时 00分 00秒</div>
+
+<div>
+<button onclick="startTimer()">开始倒计时</button>
+<button onclick="pauseTimer()">暂停</button>
+<button onclick="resetTimer()">重置</button>
+</div>
+<div class="tip-text">重置后再次启动，提醒可以重复触发</div>
+
 <script>
-// 浏览器Audio前缀兼容修复
-window.AudioContext = window.AudioContext || window.webkitAudioContext;
+let timer = null;
+let warned = false;
 
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
-const statusText = document.getElementById('status');
-const cycleInput = document.getElementById('cycleInput');
-const offsetInput = document.getElementById('offsetInput');
-
-let audioCtx = null;
-let animFrameId = null;
-let scheduleInterval = null;
-let audioStartTime = 0;
-let nextBeepIndex = 0;
-
-let CYCLE_TIME = 21.0;
-let BEEP_OFFSET = 20.8;
-const ALERT_DURATION = 1.2;
-const SCHEDULE_AHEAD = 3.0;
-
-// 蜂鸣音效生成
-function scheduleBeep(targetTime) {
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.value = 880;
-
-  gain.gain.setValueAtTime(0, targetTime);
-  gain.gain.setValueAtTime(0.3, targetTime + 0.005);
-  gain.gain.setValueAtTime(0, targetTime + 0.5);
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start(targetTime);
-  osc.stop(targetTime + 0.6);
+// 简易蜂鸣函数
+function playBeep(){
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    oscillator.connect(gain);
+    gain.connect(audioCtx.destination);
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 800;
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.3);
 }
 
-function checkBeepTask() {
-  if (!audioCtx) return;
-  const elapsed = audioCtx.currentTime - audioStartTime;
-  const nextBeepTime = nextBeepIndex * CYCLE_TIME + BEEP_OFFSET;
-  if (elapsed + SCHEDULE_AHEAD >= nextBeepTime) {
-    scheduleBeep(audioStartTime + nextBeepTime);
-    nextBeepIndex += 1;
-  }
+function update(){
+    const targetStr = document.getElementById('targetTime').value;
+    const warnNum = Number(document.getElementById('warnSec').value);
+    const targetStamp = new Date(targetStr).getTime();
+    const now = Date.now();
+    const diff = targetStamp - now;
+
+    if(diff <= 0){
+        document.getElementById('timeBox').innerText = "倒计时结束！";
+        clearInterval(timer);
+        return;
+    }
+
+    let d = Math.floor(diff / 86400000);
+    let h = Math.floor((diff % 86400000) / 3600000);
+    let m = Math.floor((diff % 3600000) / 60000);
+    let s = Math.floor((diff % 60000) / 1000);
+    document.getElementById('timeBox').innerText = `${d}天 ${h}时 ${m}分 ${s}秒`;
+
+    // 到达预警时间触发提醒
+    if(warnNum > 0 && diff <= warnNum * 1000 && !warned){
+        playBeep();
+        alert("倒计时即将到达！");
+        warned = true;
+    }
 }
 
-function renderCount() {
-  if (!audioCtx) return;
-  const elapsed = audioCtx.currentTime - audioStartTime;
-  let remain = BEEP_OFFSET - (elapsed % CYCLE_TIME);
-  if (remain < 0) remain += CYCLE_TIME;
-  statusText.innerText = 距离提醒：${remain.toFixed(1)} 秒;
-
-  let sinceBeep = (elapsed - BEEP_OFFSET) % CYCLE_TIME;
-  if (sinceBeep < 0) sinceBeep += CYCLE_TIME;
-  if (elapsed >= BEEP_OFFSET && sinceBeep < ALERT_DURATION) {
-    document.body.classList.add('alert');
-  } else {
-    document.body.classList.remove('alert');
-  }
-  animFrameId = requestAnimationFrame(renderCount);
+function startTimer(){
+    pauseTimer();
+    update();
+    timer = setInterval(update, 1000);
 }
 
-// 开启按钮主逻辑：密码校验 + 音频初始化（用户点击内，合规不拦截）
-startBtn.onclick = function () {
-  const pwd = prompt('请输入访问密码');
-  if (pwd !== 'qqsgsnt') {
-    statusText.textContent = '密码错误，无法启动计时';
-    return;
-  }
-
-  // 读取参数容错
-  CYCLE_TIME = Number(cycleInput.value) || 21.0;
-  BEEP_OFFSET = Number(offsetInput.value) || 20.8;
-  if (BEEP_OFFSET >= CYCLE_TIME) {
-    BEEP_OFFSET = CYCLE_TIME - 0.2;
-    offsetInput.value = BEEP_OFFSET;
-  }
-
-  // 锁定输入控件
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  cycleInput.disabled = true;
-  offsetInput.disabled = true;
-
-  // 创建并强制唤醒音频上下文
-  audioCtx = new AudioContext();
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-
-  audioStartTime = audioCtx.currentTime;
-  nextBeepIndex = 0;
-  scheduleInterval = setInterval(checkBeepTask, 100);
-  renderCount();
+function pauseTimer(){
+    if(timer){
+        clearInterval(timer);
+        timer = null;
+    }
 }
 
-// 停止重置
-stopBtn.onclick = function () {
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
-  cycleInput.disabled = false;
-  offsetInput.disabled = false;
-
-  cancelAnimationFrame(animFrameId);
-  clearInterval(scheduleInterval);
-  if (audioCtx) {
-    audioCtx.close();
-    audioCtx = null;
-  }
-  document.body.classList.remove('alert');
-  statusText.textContent = '计时已停止，可修改参数重启';
+function resetTimer(){
+    pauseTimer();
+    warned = false;
+    document.getElementById('timeBox').innerText = "00天 00时 00分 00秒";
 }
 </script>
 </body>
