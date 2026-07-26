@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 强制禁止页面缓存，解决GitHub旧脚本残留 -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>自定义精准循环定时器</title>
   <style>
     body {
@@ -137,7 +141,7 @@
         <input type="number" id="offsetInput" value="20.8" step="0.1" min="0">
       </div>
     </div>
-    <div class="status" id="status">点击“开启”开始定时</div>
+    <div class="status" id="status">点击【开启】按钮启动计时</div>
     <div class="btn-group">
       <button id="startBtn">开启</button>
       <button id="stopBtn" disabled>停止</button>
@@ -145,6 +149,9 @@
 </div>
 
 <script>
+// 浏览器Audio前缀兼容修复
+window.AudioContext = window.AudioContext || window.webkitAudioContext;
+
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const statusText = document.getElementById('status');
@@ -162,78 +169,86 @@ let BEEP_OFFSET = 20.8;
 const ALERT_DURATION = 1.2;
 const SCHEDULE_AHEAD = 3.0;
 
-function scheduleBeep(targetAudioTime) {
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-  oscillator.type = 'sine';
-  oscillator.frequency.value = 880;
-  gainNode.gain.setValueAtTime(0, targetAudioTime);
-  gainNode.gain.setValueAtTime(0.3, targetAudioTime + 0.005);
-  gainNode.gain.setValueAtTime(0, targetAudioTime + 0.5);
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-  oscillator.start(targetAudioTime);
-  oscillator.stop(targetAudioTime + 0.6);
+// 蜂鸣音效生成
+function scheduleBeep(targetTime) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 880;
+
+  gain.gain.setValueAtTime(0, targetTime);
+  gain.gain.setValueAtTime(0.3, targetTime + 0.005);
+  gain.gain.setValueAtTime(0, targetTime + 0.5);
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(targetTime);
+  osc.stop(targetTime + 0.6);
 }
 
-function checkAudioSchedule() {
+function checkBeepTask() {
   if (!audioCtx) return;
   const elapsed = audioCtx.currentTime - audioStartTime;
-  const nextBeepTime = (nextBeepIndex * CYCLE_TIME) + BEEP_OFFSET;
+  const nextBeepTime = nextBeepIndex * CYCLE_TIME + BEEP_OFFSET;
   if (elapsed + SCHEDULE_AHEAD >= nextBeepTime) {
     scheduleBeep(audioStartTime + nextBeepTime);
-    nextBeepIndex++;
+    nextBeepIndex += 1;
   }
 }
 
-function render() {
+function renderCount() {
   if (!audioCtx) return;
   const elapsed = audioCtx.currentTime - audioStartTime;
-  let remaining = BEEP_OFFSET - (elapsed % CYCLE_TIME);
-  if (remaining < 0) remaining += CYCLE_TIME;
-  statusText.innerText = 距离下一次提醒：${remaining.toFixed(1)} 秒;
-  let timeSinceBeep = (elapsed - BEEP_OFFSET) % CYCLE_TIME;
-  if (timeSinceBeep < 0) timeSinceBeep += CYCLE_TIME;
-  if (elapsed >= BEEP_OFFSET && timeSinceBeep < ALERT_DURATION) {
+  let remain = BEEP_OFFSET - (elapsed % CYCLE_TIME);
+  if (remain < 0) remain += CYCLE_TIME;
+  statusText.innerText = 距离提醒：${remain.toFixed(1)} 秒;
+
+  let sinceBeep = (elapsed - BEEP_OFFSET) % CYCLE_TIME;
+  if (sinceBeep < 0) sinceBeep += CYCLE_TIME;
+  if (elapsed >= BEEP_OFFSET && sinceBeep < ALERT_DURATION) {
     document.body.classList.add('alert');
   } else {
     document.body.classList.remove('alert');
   }
-  animFrameId = requestAnimationFrame(render);
+  animFrameId = requestAnimationFrame(renderCount);
 }
 
-// 唯一入口：点击开启按钮才验证密码+初始化音频
-startBtn.onclick = function(){
-  const pwd = prompt('请输入密码');
-  // 固定密码
-  if(pwd !== 'qqsgsnt'){
-    statusText.textContent = '密码错误，无法启动';
+// 开启按钮主逻辑：密码校验 + 音频初始化（用户点击内，合规不拦截）
+startBtn.onclick = function () {
+  const pwd = prompt('请输入访问密码');
+  if (pwd !== 'qqsgsnt') {
+    statusText.textContent = '密码错误，无法启动计时';
     return;
   }
 
-  CYCLE_TIME = Number(cycleInput.value) || 21;
+  // 读取参数容错
+  CYCLE_TIME = Number(cycleInput.value) || 21.0;
   BEEP_OFFSET = Number(offsetInput.value) || 20.8;
-  if(BEEP_OFFSET >= CYCLE_TIME){
+  if (BEEP_OFFSET >= CYCLE_TIME) {
     BEEP_OFFSET = CYCLE_TIME - 0.2;
     offsetInput.value = BEEP_OFFSET;
   }
 
+  // 锁定输入控件
   startBtn.disabled = true;
   stopBtn.disabled = false;
   cycleInput.disabled = true;
   offsetInput.disabled = true;
 
-  // 用户主动点击内创建音频，浏览器绝对放行
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if(audioCtx.state === 'suspended') audioCtx.resume();
+  // 创建并强制唤醒音频上下文
+  audioCtx = new AudioContext();
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
 
   audioStartTime = audioCtx.currentTime;
   nextBeepIndex = 0;
-  scheduleInterval = setInterval(checkAudioSchedule, 100);
-  render();
+  scheduleInterval = setInterval(checkBeepTask, 100);
+  renderCount();
 }
 
-stopBtn.onclick = function(){
+// 停止重置
+stopBtn.onclick = function () {
   startBtn.disabled = false;
   stopBtn.disabled = true;
   cycleInput.disabled = false;
@@ -241,12 +256,12 @@ stopBtn.onclick = function(){
 
   cancelAnimationFrame(animFrameId);
   clearInterval(scheduleInterval);
-  if(audioCtx){
+  if (audioCtx) {
     audioCtx.close();
     audioCtx = null;
   }
   document.body.classList.remove('alert');
-  statusText.textContent = '循环已停止，可修改设置后重新开启';
+  statusText.textContent = '计时已停止，可修改参数重启';
 }
 </script>
 </body>
