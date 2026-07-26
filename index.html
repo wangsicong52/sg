@@ -63,7 +63,6 @@
       text-align: center;
       font-size: 1rem;
       font-weight: 500;
-      transition: all 0.2s;
     }
     
     .setting-row input:focus {
@@ -75,7 +74,6 @@
     .setting-row input:disabled {
       background-color: #e5e5ea;
       color: #8e8e93;
-      cursor: not-allowed;
     }
 
     .status {
@@ -99,7 +97,6 @@
       border: none;
       border-radius: 25px;
       cursor: pointer;
-      transition: all 0.2s ease;
     }
 
     #startBtn {
@@ -109,7 +106,6 @@
 
     #startBtn:hover:not(:disabled) {
       background-color: #28a745;
-      transform: scale(1.03);
     }
 
     #stopBtn {
@@ -119,26 +115,18 @@
 
     #stopBtn:hover:not(:disabled) {
       background-color: #dc3545;
-      transform: scale(1.03);
     }
 
     button:disabled {
       background-color: #e5e5ea;
       color: #8e8e93;
       cursor: not-allowed;
-      transform: none;
-    }
-
-    /* 初始隐藏页面主体 */
-    #mainBox{
-      display: none;
     }
   </style>
 </head>
 <body>
-  <div id="mainBox" class="container">
+<div class="container">
     <h1>自定义精准循环</h1>
-    
     <div class="settings">
       <div class="setting-row">
         <span>循环总时长 (秒)</span>
@@ -149,26 +137,28 @@
         <input type="number" id="offsetInput" value="20.8" step="0.1" min="0">
       </div>
     </div>
-
     <div class="status" id="status">点击“开启”开始定时</div>
     <div class="btn-group">
       <button id="startBtn">开启</button>
       <button id="stopBtn" disabled>停止</button>
     </div>
-  </div>
+</div>
 
 <script>
-// 密码配置
-const passKey = "qqsgsnt";
-let pass = prompt("请输入访问密码：");
-if(pass !== passKey){
-  document.body.innerHTML = <div style="display:flex;justify-content:center;align-items:center;height:100vh;color:red;font-size:24px;">密码错误，禁止访问</div>;
-}else{
-  // 密码正确，展示页面
-  document.getElementById('mainBox').style.display = 'block';
-}
+// 密码改成点击弹窗，规避页面加载阻塞问题
+document.querySelector('.container').addEventListener('click', function checkPwd(){
+  this.removeEventListener('click', checkPwd);
+  const passKey = "qqsgsnt";
+  let pass = prompt('输入访问密码');
+  if(pass !== passKey){
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:red;font-size:22px;">密码错误</div>';
+    return;
+  }
+  // 密码正确才初始化定时器
+  initTimer();
+})
 
-// 下面原有定时器JS完全不变
+function initTimer(){
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const statusText = document.getElementById('status');
@@ -182,25 +172,20 @@ let audioStartTime = 0;
 let nextBeepIndex = 0;  
 
 let CYCLE_TIME = 21.0;    
-let BEEP_OFFSET = 20.8;   
+let BEEP_OFFSET = 20.8;
 const ALERT_DURATION = 1.2; 
 const SCHEDULE_AHEAD = 3.0; 
 
 function scheduleBeep(targetAudioTime) {
   const oscillator = audioCtx.createOscillator();
   const gainNode = audioCtx.createGain();
-
   oscillator.type = 'sine';
   oscillator.frequency.value = 880; 
-
   gainNode.gain.setValueAtTime(0, targetAudioTime);
   gainNode.gain.setValueAtTime(0.3, targetAudioTime + 0.005);
   gainNode.gain.setValueAtTime(0, targetAudioTime + 0.5);
-  gainNode.gain.setValueAtTime(0, targetAudioTime + 0.55);
-
   oscillator.connect(gainNode);
   gainNode.connect(audioCtx.destination);
-
   oscillator.start(targetAudioTime);
   oscillator.stop(targetAudioTime + 0.6);
 }
@@ -209,7 +194,6 @@ function checkAudioSchedule() {
   if (!audioCtx) return;
   const elapsed = audioCtx.currentTime - audioStartTime;
   const nextBeepTime = (nextBeepIndex * CYCLE_TIME) + BEEP_OFFSET;
-  
   if (elapsed + SCHEDULE_AHEAD >= nextBeepTime) {
     scheduleBeep(audioStartTime + nextBeepTime);
     nextBeepIndex++;
@@ -219,46 +203,34 @@ function checkAudioSchedule() {
 function render() {
   if (!audioCtx) return;
   const elapsed = audioCtx.currentTime - audioStartTime;
-
   let remaining = BEEP_OFFSET - (elapsed % CYCLE_TIME);
   if (remaining < 0) remaining += CYCLE_TIME;
   statusText.innerText = 距离下一次提醒：${remaining.toFixed(1)} 秒;
-
   let timeSinceBeep = (elapsed - BEEP_OFFSET) % CYCLE_TIME;
   if (timeSinceBeep < 0) timeSinceBeep += CYCLE_TIME;
-
   if (elapsed >= BEEP_OFFSET && timeSinceBeep < ALERT_DURATION) {
     document.body.classList.add('alert');
   } else {
     document.body.classList.remove('alert');
   }
-
   animFrameId = requestAnimationFrame(render);
 }
 
 startBtn.addEventListener('click', () => {
   CYCLE_TIME = parseFloat(cycleInput.value) || 21.0;
   BEEP_OFFSET = parseFloat(offsetInput.value) || 20.8;
-  
   if (BEEP_OFFSET >= CYCLE_TIME) {
     BEEP_OFFSET = Math.max(0, CYCLE_TIME - 0.2);
     offsetInput.value = BEEP_OFFSET;
   }
-
   startBtn.disabled = true;
   stopBtn.disabled = false;
   cycleInput.disabled = true;
   offsetInput.disabled = true;
-  
-  // 现在是用户点击按钮后初始化音频，完美绕过浏览器限制
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   audioStartTime = audioCtx.currentTime;
   nextBeepIndex = 0;
-
   scheduleInterval = setInterval(checkAudioSchedule, 100);
   render();
 });
@@ -268,18 +240,16 @@ stopBtn.addEventListener('click', () => {
   stopBtn.disabled = true;
   cycleInput.disabled = false;
   offsetInput.disabled = false;
-
   if (animFrameId) cancelAnimationFrame(animFrameId);
   if (scheduleInterval) clearInterval(scheduleInterval);
-
   if (audioCtx) {
     audioCtx.close();
     audioCtx = null;
   }
-
   document.body.classList.remove('alert');
   statusText.innerText = '循环已停止，可修改设置后重新开启';
 });
+}
 </script>
 </body>
 </html>
