@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>自定义精准循环定时器</title>
+  <title>自定义毫秒精准循环定时器</title>
   <style>
     body {
       margin: 0;
@@ -28,7 +28,7 @@
       padding: 40px;
       border-radius: 16px;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-      min-width: 320px;
+      min-width: 360px;
     }
 
     h1 {
@@ -38,12 +38,11 @@
       margin-bottom: 24px;
     }
 
-    /* 新增设置面板样式 */
     .settings {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
       padding: 16px;
       background: #f8f9fa;
       border-radius: 12px;
@@ -55,15 +54,22 @@
       align-items: center;
       font-size: 0.95rem;
       color: #444;
+      gap: 10px;
+    }
+
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .setting-row input {
-      width: 70px;
-      padding: 6px 8px;
+      width: 65px;
+      padding: 6px 4px;
       border: 1px solid #d1d1d6;
       border-radius: 8px;
       text-align: center;
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: 500;
       transition: all 0.2s;
     }
@@ -78,6 +84,21 @@
       background-color: #e5e5ea;
       color: #8e8e93;
       cursor: not-allowed;
+    }
+
+    /* 表格下方注释与蓝字提醒样式 */
+    .note-section {
+      text-align: left;
+      font-size: 0.85rem;
+      color: #666;
+      line-height: 1.5;
+      margin-bottom: 24px;
+      padding: 0 4px;
+    }
+
+    .blue-tip {
+      color: #007aff;
+      margin-top: 6px;
     }
 
     .status {
@@ -135,18 +156,30 @@
 <body>
 
   <div class="container">
-    <h1>自定义精准循环</h1>
+    <h1>自定义毫秒精准循环</h1>
     
-    <!-- UI 设置面板 -->
+    <!-- UI 设置面板：默认值更新为 21秒112毫秒 和 20秒712毫秒 -->
     <div class="settings">
       <div class="setting-row">
-        <span>循环总时长 (秒)</span>
-        <input type="number" id="cycleInput" value="21.0" step="0.1" min="1">
+        <span>循环总时长</span>
+        <div class="input-wrapper">
+          <input type="number" id="cycleSecInput" value="21" min="0">秒
+          <input type="number" id="cycleMsInput" value="112" min="0" max="999">毫秒
+        </div>
       </div>
       <div class="setting-row">
-        <span>提醒触发点 (秒)</span>
-        <input type="number" id="offsetInput" value="20.8" step="0.1" min="0">
+        <span>提醒触发点</span>
+        <div class="input-wrapper">
+          <input type="number" id="offsetSecInput" value="20" min="0">秒
+          <input type="number" id="offsetMsInput" value="712" min="0" max="999">毫秒
+        </div>
       </div>
+    </div>
+
+    <!-- 表格下方注释与蓝字提醒 -->
+    <div class="note-section">
+      <div><strong>使用方法：</strong>刷完第一排小怪后，将子女拉至怪物正中央，观察子女说话的一瞬间点击开启键，后续每次听到声音时按动赤壁即可。若声音晚于子女说话，则按子女说话为准。</div>
+      <div class="blue-tip"><strong>提醒：</strong>提醒触发点和循环差值为两倍的个人反应时间，每个人的数值是不同的。</div>
     </div>
 
     <div class="status" id="status">点击“开启”开始定时</div>
@@ -160,8 +193,11 @@
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const statusText = document.getElementById('status');
-    const cycleInput = document.getElementById('cycleInput');
-    const offsetInput = document.getElementById('offsetInput');
+    
+    const cycleSecInput = document.getElementById('cycleSecInput');
+    const cycleMsInput = document.getElementById('cycleMsInput');
+    const offsetSecInput = document.getElementById('offsetSecInput');
+    const offsetMsInput = document.getElementById('offsetMsInput');
 
     let audioCtx = null;
     let animFrameId = null;
@@ -169,9 +205,8 @@
     let audioStartTime = 0; 
     let nextBeepIndex = 0;  
 
-    // 将常量改为变量，以便接收 UI 输入
-    let CYCLE_TIME = 21.0;    
-    let BEEP_OFFSET = 20.8;   
+    let CYCLE_TIME = 21.112;    
+    let BEEP_OFFSET = 20.712;   
     const ALERT_DURATION = 1.2; 
     const SCHEDULE_AHEAD = 3.0; 
 
@@ -209,9 +244,15 @@
       if (!audioCtx) return;
       const elapsed = audioCtx.currentTime - audioStartTime;
 
-      let remaining = BEEP_OFFSET - (elapsed % CYCLE_TIME);
-      if (remaining < 0) remaining += CYCLE_TIME;
-      statusText.innerText = `距离下一次提醒：${remaining.toFixed(1)} 秒`;
+      let remainingSeconds = BEEP_OFFSET - (elapsed % CYCLE_TIME);
+      if (remainingSeconds < 0) remainingSeconds += CYCLE_TIME;
+
+      const totalMs = Math.round(remainingSeconds * 1000);
+      const secs = Math.floor(totalMs / 1000);
+      const msecs = totalMs % 1000;
+      
+      const formattedMs = String(msecs).padStart(3, '0');
+      statusText.innerText = `距离下一次提醒：${secs}秒 ${formattedMs}毫秒`;
 
       let timeSinceBeep = (elapsed - BEEP_OFFSET) % CYCLE_TIME;
       if (timeSinceBeep < 0) timeSinceBeep += CYCLE_TIME;
@@ -226,24 +267,33 @@
     }
 
     startBtn.addEventListener('click', () => {
-      // 1. 读取并校验用户的输入
-      CYCLE_TIME = parseFloat(cycleInput.value) || 21.0;
-      BEEP_OFFSET = parseFloat(offsetInput.value) || 20.8;
+      const cycleSec = parseInt(cycleSecInput.value) || 0;
+      const cycleMs = parseInt(cycleMsInput.value) || 0;
+      const totalCycleMs = (cycleSec * 1000) + cycleMs;
+
+      const offsetSec = parseInt(offsetSecInput.value) || 0;
+      const offsetMs = parseInt(offsetMsInput.value) || 0;
+      const totalOffsetMs = (offsetSec * 1000) + offsetMs;
+
+      CYCLE_TIME = totalCycleMs / 1000;
+      BEEP_OFFSET = totalOffsetMs / 1000;
       
-      // 容错处理：如果触发点大于等于总时长，自动修正为提前 0.2 秒
       if (BEEP_OFFSET >= CYCLE_TIME) {
         BEEP_OFFSET = Math.max(0, CYCLE_TIME - 0.2);
-        offsetInput.value = BEEP_OFFSET;
+        const correctedTotalMs = Math.round(BEEP_OFFSET * 1000);
+        offsetSecInput.value = Math.floor(correctedTotalMs / 1000);
+        offsetMsInput.value = correctedTotalMs % 1000;
       }
 
-      // 2. 锁定 UI
       startBtn.disabled = true;
       stopBtn.disabled = false;
-      cycleInput.disabled = true;
-      offsetInput.disabled = true;
+      cycleSecInput.disabled = true;
+      cycleMsInput.disabled = true;
+      offsetSecInput.disabled = true;
+      offsetMsInput.disabled = true;
       
-      // 3. 启动引擎
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
       }
@@ -256,13 +306,13 @@
     });
 
     stopBtn.addEventListener('click', () => {
-      // 1. 恢复 UI
       startBtn.disabled = false;
       stopBtn.disabled = true;
-      cycleInput.disabled = false;
-      offsetInput.disabled = false;
+      cycleSecInput.disabled = false;
+      cycleMsInput.disabled = false;
+      offsetSecInput.disabled = false;
+      offsetMsInput.disabled = false;
 
-      // 2. 停止引擎
       if (animFrameId) cancelAnimationFrame(animFrameId);
       if (scheduleInterval) clearInterval(scheduleInterval);
 
