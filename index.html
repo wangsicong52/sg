@@ -13,7 +13,7 @@
       justify-content: center;
       align-items: center;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      transition: background-color 0.05s linear; 
+      transition: background-color 0.05s linear;
       background-color: #f5f5f7;
     }
 
@@ -64,7 +64,7 @@
       font-size: 1rem;
       font-weight: 500;
     }
-    
+
     .setting-row input:focus {
       outline: none;
       border-color: #007aff;
@@ -145,20 +145,6 @@
 </div>
 
 <script>
-// 密码改成点击弹窗，规避页面加载阻塞问题
-document.querySelector('.container').addEventListener('click', function checkPwd(){
-  this.removeEventListener('click', checkPwd);
-  const passKey = "qqsgsnt";
-  let pass = prompt('输入访问密码');
-  if(pass !== passKey){
-    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:red;font-size:22px;">密码错误</div>';
-    return;
-  }
-  // 密码正确才初始化定时器
-  initTimer();
-})
-
-function initTimer(){
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const statusText = document.getElementById('status');
@@ -167,20 +153,20 @@ const offsetInput = document.getElementById('offsetInput');
 
 let audioCtx = null;
 let animFrameId = null;
-let scheduleInterval = null; 
-let audioStartTime = 0; 
-let nextBeepIndex = 0;  
+let scheduleInterval = null;
+let audioStartTime = 0;
+let nextBeepIndex = 0;
 
-let CYCLE_TIME = 21.0;    
+let CYCLE_TIME = 21.0;
 let BEEP_OFFSET = 20.8;
-const ALERT_DURATION = 1.2; 
-const SCHEDULE_AHEAD = 3.0; 
+const ALERT_DURATION = 1.2;
+const SCHEDULE_AHEAD = 3.0;
 
 function scheduleBeep(targetAudioTime) {
   const oscillator = audioCtx.createOscillator();
   const gainNode = audioCtx.createGain();
   oscillator.type = 'sine';
-  oscillator.frequency.value = 880; 
+  oscillator.frequency.value = 880;
   gainNode.gain.setValueAtTime(0, targetAudioTime);
   gainNode.gain.setValueAtTime(0.3, targetAudioTime + 0.005);
   gainNode.gain.setValueAtTime(0, targetAudioTime + 0.5);
@@ -216,17 +202,26 @@ function render() {
   animFrameId = requestAnimationFrame(render);
 }
 
+// 把密码校验放在开启按钮内部，用户点击=主动交互，音频不会被拦截
 startBtn.addEventListener('click', () => {
+  const password = prompt("请输入访问密码");
+  if (password !== "qqsgsnt") {
+    statusText.innerText = "密码错误，无法启动";
+    return;
+  }
+
   CYCLE_TIME = parseFloat(cycleInput.value) || 21.0;
   BEEP_OFFSET = parseFloat(offsetInput.value) || 20.8;
   if (BEEP_OFFSET >= CYCLE_TIME) {
     BEEP_OFFSET = Math.max(0, CYCLE_TIME - 0.2);
     offsetInput.value = BEEP_OFFSET;
   }
+
   startBtn.disabled = true;
   stopBtn.disabled = false;
   cycleInput.disabled = true;
   offsetInput.disabled = true;
+
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   audioStartTime = audioCtx.currentTime;
@@ -249,7 +244,6 @@ stopBtn.addEventListener('click', () => {
   document.body.classList.remove('alert');
   statusText.innerText = '循环已停止，可修改设置后重新开启';
 });
-}
 </script>
 </body>
 </html>
