@@ -1,11 +1,3 @@
-<script>
-// ========== 在这里修改你的网页访问密码 ==========
-const pagePassword = "qqsgsnt";
-const userInput = prompt("请输入页面访问密码，进入循环定时器");
-if (userInput !== pagePassword) {
-    document.documentElement.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-size:22px;color:red;font-family:Arial;">密码错误，拒绝访问</div>';
-}
-</script>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -45,7 +37,6 @@ if (userInput !== pagePassword) {
       margin-bottom: 24px;
     }
 
-    /* 新增设置面板样式 */
     .settings {
       display: flex;
       flex-direction: column;
@@ -137,14 +128,17 @@ if (userInput !== pagePassword) {
       cursor: not-allowed;
       transform: none;
     }
+
+    /* 初始隐藏页面主体 */
+    #mainBox{
+      display: none;
+    }
   </style>
 </head>
 <body>
-
-  <div class="container">
+  <div id="mainBox" class="container">
     <h1>自定义精准循环</h1>
     
-    <!-- UI 设置面板 -->
     <div class="settings">
       <div class="setting-row">
         <span>循环总时长 (秒)</span>
@@ -163,124 +157,129 @@ if (userInput !== pagePassword) {
     </div>
   </div>
 
-  <script>
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const statusText = document.getElementById('status');
-    const cycleInput = document.getElementById('cycleInput');
-    const offsetInput = document.getElementById('offsetInput');
+<script>
+// 密码配置
+const passKey = "qqsgsnt";
+let pass = prompt("请输入访问密码：");
+if(pass !== passKey){
+  document.body.innerHTML = <div style="display:flex;justify-content:center;align-items:center;height:100vh;color:red;font-size:24px;">密码错误，禁止访问</div>;
+}else{
+  // 密码正确，展示页面
+  document.getElementById('mainBox').style.display = 'block';
+}
 
-    let audioCtx = null;
-    let animFrameId = null;
-    let scheduleInterval = null; 
-    let audioStartTime = 0; 
-    let nextBeepIndex = 0;  
+// 下面原有定时器JS完全不变
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const statusText = document.getElementById('status');
+const cycleInput = document.getElementById('cycleInput');
+const offsetInput = document.getElementById('offsetInput');
 
-    // 将常量改为变量，以便接收 UI 输入
-    let CYCLE_TIME = 21.0;    
-    let BEEP_OFFSET = 20.8;   
-    const ALERT_DURATION = 1.2; 
-    const SCHEDULE_AHEAD = 3.0; 
+let audioCtx = null;
+let animFrameId = null;
+let scheduleInterval = null; 
+let audioStartTime = 0; 
+let nextBeepIndex = 0;  
 
-    function scheduleBeep(targetAudioTime) {
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
+let CYCLE_TIME = 21.0;    
+let BEEP_OFFSET = 20.8;   
+const ALERT_DURATION = 1.2; 
+const SCHEDULE_AHEAD = 3.0; 
 
-      oscillator.type = 'sine';
-      oscillator.frequency.value = 880; 
+function scheduleBeep(targetAudioTime) {
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
 
-      gainNode.gain.setValueAtTime(0, targetAudioTime);
-      gainNode.gain.setValueAtTime(0.3, targetAudioTime + 0.005);
-      gainNode.gain.setValueAtTime(0, targetAudioTime + 0.5);
-      gainNode.gain.setValueAtTime(0, targetAudioTime + 0.55);
+  oscillator.type = 'sine';
+  oscillator.frequency.value = 880; 
 
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
+  gainNode.gain.setValueAtTime(0, targetAudioTime);
+  gainNode.gain.setValueAtTime(0.3, targetAudioTime + 0.005);
+  gainNode.gain.setValueAtTime(0, targetAudioTime + 0.5);
+  gainNode.gain.setValueAtTime(0, targetAudioTime + 0.55);
 
-      oscillator.start(targetAudioTime);
-      oscillator.stop(targetAudioTime + 0.6);
-    }
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
 
-    function checkAudioSchedule() {
-      if (!audioCtx) return;
-      const elapsed = audioCtx.currentTime - audioStartTime;
-      const nextBeepTime = (nextBeepIndex * CYCLE_TIME) + BEEP_OFFSET;
-      
-      if (elapsed + SCHEDULE_AHEAD >= nextBeepTime) {
-        scheduleBeep(audioStartTime + nextBeepTime);
-        nextBeepIndex++;
-      }
-    }
+  oscillator.start(targetAudioTime);
+  oscillator.stop(targetAudioTime + 0.6);
+}
 
-    function render() {
-      if (!audioCtx) return;
-      const elapsed = audioCtx.currentTime - audioStartTime;
+function checkAudioSchedule() {
+  if (!audioCtx) return;
+  const elapsed = audioCtx.currentTime - audioStartTime;
+  const nextBeepTime = (nextBeepIndex * CYCLE_TIME) + BEEP_OFFSET;
+  
+  if (elapsed + SCHEDULE_AHEAD >= nextBeepTime) {
+    scheduleBeep(audioStartTime + nextBeepTime);
+    nextBeepIndex++;
+  }
+}
 
-      let remaining = BEEP_OFFSET - (elapsed % CYCLE_TIME);
-      if (remaining < 0) remaining += CYCLE_TIME;
-      statusText.innerText = `距离下一次提醒：${remaining.toFixed(1)} 秒`;
+function render() {
+  if (!audioCtx) return;
+  const elapsed = audioCtx.currentTime - audioStartTime;
 
-      let timeSinceBeep = (elapsed - BEEP_OFFSET) % CYCLE_TIME;
-      if (timeSinceBeep < 0) timeSinceBeep += CYCLE_TIME;
+  let remaining = BEEP_OFFSET - (elapsed % CYCLE_TIME);
+  if (remaining < 0) remaining += CYCLE_TIME;
+  statusText.innerText = 距离下一次提醒：${remaining.toFixed(1)} 秒;
 
-      if (elapsed >= BEEP_OFFSET && timeSinceBeep < ALERT_DURATION) {
-        document.body.classList.add('alert');
-      } else {
-        document.body.classList.remove('alert');
-      }
+  let timeSinceBeep = (elapsed - BEEP_OFFSET) % CYCLE_TIME;
+  if (timeSinceBeep < 0) timeSinceBeep += CYCLE_TIME;
 
-      animFrameId = requestAnimationFrame(render);
-    }
+  if (elapsed >= BEEP_OFFSET && timeSinceBeep < ALERT_DURATION) {
+    document.body.classList.add('alert');
+  } else {
+    document.body.classList.remove('alert');
+  }
 
-    startBtn.addEventListener('click', () => {
-      // 1. 读取并校验用户的输入
-      CYCLE_TIME = parseFloat(cycleInput.value) || 21.0;
-      BEEP_OFFSET = parseFloat(offsetInput.value) || 20.8;
-      
-      // 容错处理：如果触发点大于等于总时长，自动修正为提前 0.2 秒
-      if (BEEP_OFFSET >= CYCLE_TIME) {
-        BEEP_OFFSET = Math.max(0, CYCLE_TIME - 0.2);
-        offsetInput.value = BEEP_OFFSET;
-      }
+  animFrameId = requestAnimationFrame(render);
+}
 
-      // 2. 锁定 UI
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
-      cycleInput.disabled = true;
-      offsetInput.disabled = true;
-      
-      // 3. 启动引擎
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+startBtn.addEventListener('click', () => {
+  CYCLE_TIME = parseFloat(cycleInput.value) || 21.0;
+  BEEP_OFFSET = parseFloat(offsetInput.value) || 20.8;
+  
+  if (BEEP_OFFSET >= CYCLE_TIME) {
+    BEEP_OFFSET = Math.max(0, CYCLE_TIME - 0.2);
+    offsetInput.value = BEEP_OFFSET;
+  }
 
-      audioStartTime = audioCtx.currentTime;
-      nextBeepIndex = 0;
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  cycleInput.disabled = true;
+  offsetInput.disabled = true;
+  
+  // 现在是用户点击按钮后初始化音频，完美绕过浏览器限制
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
 
-      scheduleInterval = setInterval(checkAudioSchedule, 100);
-      render();
-    });
+  audioStartTime = audioCtx.currentTime;
+  nextBeepIndex = 0;
 
-    stopBtn.addEventListener('click', () => {
-      // 1. 恢复 UI
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-      cycleInput.disabled = false;
-      offsetInput.disabled = false;
+  scheduleInterval = setInterval(checkAudioSchedule, 100);
+  render();
+});
 
-      // 2. 停止引擎
-      if (animFrameId) cancelAnimationFrame(animFrameId);
-      if (scheduleInterval) clearInterval(scheduleInterval);
+stopBtn.addEventListener('click', () => {
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  cycleInput.disabled = false;
+  offsetInput.disabled = false;
 
-      if (audioCtx) {
-        audioCtx.close();
-        audioCtx = null;
-      }
+  if (animFrameId) cancelAnimationFrame(animFrameId);
+  if (scheduleInterval) clearInterval(scheduleInterval);
 
-      document.body.classList.remove('alert');
-      statusText.innerText = '循环已停止，可修改设置后重新开启';
-    });
-  </script>
+  if (audioCtx) {
+    audioCtx.close();
+    audioCtx = null;
+  }
+
+  document.body.classList.remove('alert');
+  statusText.innerText = '循环已停止，可修改设置后重新开启';
+});
+</script>
 </body>
 </html>
