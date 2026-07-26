@@ -1,102 +1,279 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>循环倒计时 小数提前预警</title>
-<style>
-*{
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: system-ui, "Microsoft Yahei", sans-serif;
-}
-body{
-    background:#0c0c0c;
-    color:#fff;
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-}
-#timeBox{
-    font-size:76px;
-    font-weight:bold;
-    color:#ff5050;
-    margin:40px 0;
-}
-.row{
-    margin:14px 0;
-}
-input{
-    font-size:19px;
-    padding:9px 14px;
-    width:460px;
-    border-radius:6px;
-    border:none;
-}
-button{
-    padding:11px 26px;
-    font-size:18px;
-    margin:0 8px;
-    border:0;
-    border-radius:6px;
-    cursor:pointer;
-    background:#ff4747;
-    color:#fff;
-}
-button:hover{opacity:0.88;}
-.tip-text{margin-top:24px;color:#aaa;}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自定义精准循环定时器</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      transition: background-color 0.05s linear; 
+      background-color: #f5f5f7;
+    }
+
+    body.alert {
+      background-color: #ff3b30;
+    }
+
+    .container {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      min-width: 320px;
+    }
+
+    h1 {
+      margin-top: 0;
+      color: #333;
+      font-size: 1.5rem;
+      margin-bottom: 24px;
+    }
+
+    /* 新增设置面板样式 */
+    .settings {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 12px;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+      color: #444;
+    }
+
+    .setting-row input {
+      width: 70px;
+      padding: 6px 8px;
+      border: 1px solid #d1d1d6;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .setting-row input:focus {
+      outline: none;
+      border-color: #007aff;
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+    }
+
+    .setting-row input:disabled {
+      background-color: #e5e5ea;
+      color: #8e8e93;
+      cursor: not-allowed;
+    }
+
+    .status {
+      font-size: 1.1rem;
+      color: #666;
+      margin-bottom: 24px;
+      min-height: 28px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    button {
+      padding: 12px 28px;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    #startBtn {
+      background-color: #34c759;
+      color: white;
+    }
+
+    #startBtn:hover:not(:disabled) {
+      background-color: #28a745;
+      transform: scale(1.03);
+    }
+
+    #stopBtn {
+      background-color: #ff3b30;
+      color: white;
+    }
+
+    #stopBtn:hover:not(:disabled) {
+      background-color: #dc3545;
+      transform: scale(1.03);
+    }
+
+    button:disabled {
+      background-color: #e5e5ea;
+      color: #8e8e93;
+      cursor: not-allowed;
+      transform: none;
+    }
+  </style>
 </head>
 <body>
-<div class="row">一轮总秒数：<input id="totalSec" value="20"></div>
-<div class="row">提前预警秒数：<input id="warnSec" value="0.2"></div>
-<div id="timeBox">20.000 秒</div>
-<div>
-<button onclick="startTimer()">开始循环</button>
-<button onclick="pauseTimer()">暂停</button>
-<button onclick="resetTimer()">重置</button>
-</div>
-<div class="tip-text">点击开始解锁声音；剩余0.2秒持续响铃，归零自动重启</div>
-<script>
-let timer = null,audioCtx=null,alarm=null,left=0,warned=false;
-// 初始化音频
-function initAudio(){
-    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    if(audioCtx.state==='suspended') audioCtx.resume();
-}
-// 单次蜂鸣
-function beep(){
-    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-    o.connect(g);g.connect(audioCtx.destination);
-    o.type='sine';o.frequency.value=900;
-    o.start();o.stop(audioCtx.currentTime+0.2);
-}
-// 持续警报
-function startAlarm(){stopAlarm();alarm=setInterval(beep,300);}
-function stopAlarm(){if(alarm){clearInterval(alarm);alarm=null;}}
-function update(){
-    const total=parseFloat(document.getElementById('totalSec').value);
-    const w=parseFloat(document.getElementById('warnSec').value);
-    left-=0.05;
-    if(left<=0){left=total;warned=false;stopAlarm();}
-    document.getElementById('timeBox').innerText=left.toFixed(3)+" 秒";
-    if(w>0&&left<=w&&!warned){warned=true;startAlarm();}
-}
-function startTimer(){
-    initAudio();pauseTimer();
-    const t=parseFloat(document.getElementById('totalSec').value);
-    left=t;warned=false;stopAlarm();
-    timer=setInterval(update,50);
-}
-function pauseTimer(){if(timer){clearInterval(timer);timer=null;}}
-function resetTimer(){
-    pauseTimer();stopAlarm();
-    const t=parseFloat(document.getElementById('totalSec').value);
-    left=t;warned=false;
-    document.getElementById('timeBox').innerText=left.toFixed(3)+" 秒";
-}
-</script>
+
+  <div class="container">
+    <h1>自定义精准循环</h1>
+    
+    <!-- UI 设置面板 -->
+    <div class="settings">
+      <div class="setting-row">
+        <span>循环总时长 (秒)</span>
+        <input type="number" id="cycleInput" value="21.0" step="0.1" min="1">
+      </div>
+      <div class="setting-row">
+        <span>提醒触发点 (秒)</span>
+        <input type="number" id="offsetInput" value="20.8" step="0.1" min="0">
+      </div>
+    </div>
+
+    <div class="status" id="status">点击“开启”开始定时</div>
+    <div class="btn-group">
+      <button id="startBtn">开启</button>
+      <button id="stopBtn" disabled>停止</button>
+    </div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusText = document.getElementById('status');
+    const cycleInput = document.getElementById('cycleInput');
+    const offsetInput = document.getElementById('offsetInput');
+
+    let audioCtx = null;
+    let animFrameId = null;
+    let scheduleInterval = null; 
+    let audioStartTime = 0; 
+    let nextBeepIndex = 0;  
+
+    // 将常量改为变量，以便接收 UI 输入
+    let CYCLE_TIME = 21.0;    
+    let BEEP_OFFSET = 20.8;   
+    const ALERT_DURATION = 1.2; 
+    const SCHEDULE_AHEAD = 3.0; 
+
+    function scheduleBeep(targetAudioTime) {
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 880; 
+
+      gainNode.gain.setValueAtTime(0, targetAudioTime);
+      gainNode.gain.setValueAtTime(0.3, targetAudioTime + 0.005);
+      gainNode.gain.setValueAtTime(0, targetAudioTime + 0.5);
+      gainNode.gain.setValueAtTime(0, targetAudioTime + 0.55);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.start(targetAudioTime);
+      oscillator.stop(targetAudioTime + 0.6);
+    }
+
+    function checkAudioSchedule() {
+      if (!audioCtx) return;
+      const elapsed = audioCtx.currentTime - audioStartTime;
+      const nextBeepTime = (nextBeepIndex * CYCLE_TIME) + BEEP_OFFSET;
+      
+      if (elapsed + SCHEDULE_AHEAD >= nextBeepTime) {
+        scheduleBeep(audioStartTime + nextBeepTime);
+        nextBeepIndex++;
+      }
+    }
+
+    function render() {
+      if (!audioCtx) return;
+      const elapsed = audioCtx.currentTime - audioStartTime;
+
+      let remaining = BEEP_OFFSET - (elapsed % CYCLE_TIME);
+      if (remaining < 0) remaining += CYCLE_TIME;
+      statusText.innerText = `距离下一次提醒：${remaining.toFixed(1)} 秒`;
+
+      let timeSinceBeep = (elapsed - BEEP_OFFSET) % CYCLE_TIME;
+      if (timeSinceBeep < 0) timeSinceBeep += CYCLE_TIME;
+
+      if (elapsed >= BEEP_OFFSET && timeSinceBeep < ALERT_DURATION) {
+        document.body.classList.add('alert');
+      } else {
+        document.body.classList.remove('alert');
+      }
+
+      animFrameId = requestAnimationFrame(render);
+    }
+
+    startBtn.addEventListener('click', () => {
+      // 1. 读取并校验用户的输入
+      CYCLE_TIME = parseFloat(cycleInput.value) || 21.0;
+      BEEP_OFFSET = parseFloat(offsetInput.value) || 20.8;
+      
+      // 容错处理：如果触发点大于等于总时长，自动修正为提前 0.2 秒
+      if (BEEP_OFFSET >= CYCLE_TIME) {
+        BEEP_OFFSET = Math.max(0, CYCLE_TIME - 0.2);
+        offsetInput.value = BEEP_OFFSET;
+      }
+
+      // 2. 锁定 UI
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      cycleInput.disabled = true;
+      offsetInput.disabled = true;
+      
+      // 3. 启动引擎
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      audioStartTime = audioCtx.currentTime;
+      nextBeepIndex = 0;
+
+      scheduleInterval = setInterval(checkAudioSchedule, 100);
+      render();
+    });
+
+    stopBtn.addEventListener('click', () => {
+      // 1. 恢复 UI
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      cycleInput.disabled = false;
+      offsetInput.disabled = false;
+
+      // 2. 停止引擎
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      if (scheduleInterval) clearInterval(scheduleInterval);
+
+      if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+      }
+
+      document.body.classList.remove('alert');
+      statusText.innerText = '循环已停止，可修改设置后重新开启';
+    });
+  </script>
 </body>
 </html>
