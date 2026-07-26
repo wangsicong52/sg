@@ -2,13 +2,13 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>倒计时-可重复提醒</title>
+<title>循环倒计时 持续预警提醒</title>
 <style>
 *{
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: "Microsoft Yahei", sans-serif;
+    font-family: system-ui, "Microsoft Yahei", sans-serif;
 }
 body{
     background:#0c0c0c;
@@ -20,7 +20,7 @@ body{
     justify-content:center;
 }
 #timeBox{
-    font-size:72px;
+    font-size:76px;
     font-weight:bold;
     color:#ff5050;
     margin:40px 0;
@@ -56,69 +56,81 @@ button:hover{
 </head>
 <body>
 <div class="row">
-目标时间：<input id="targetTime" placeholder="格式：2026-08-01 18:00:00">
+一轮倒计时总秒数：<input id="totalSec" value="20" placeholder="示例 20">
 </div>
 <div class="row">
-提前提醒秒数：<input id="warnSec" value="60" placeholder="剩余多少秒提醒">
+提前预警秒数：<input id="warnSec" value="0.2" placeholder="支持小数 0.2">
 </div>
 
-<div id="timeBox">00天 00时 00分 00秒</div>
+<div id="timeBox">00.000 秒</div>
 
 <div>
-<button onclick="startTimer()">开始倒计时</button>
+<button onclick="startTimer()">开始循环</button>
 <button onclick="pauseTimer()">暂停</button>
 <button onclick="resetTimer()">重置</button>
 </div>
-<div class="tip-text">重置后再次启动，提醒可以重复触发</div>
+<div class="tip-text">每轮倒计时到预警值自动响铃，结束自动重启新一轮</div>
 
 <script>
 let timer = null;
+let audioCtx = null;
+let alarmLoop = null;
+let currentLeft = 0;  // 当前剩余秒数
 let warned = false;
 
-// 简易蜂鸣函数
-function playBeep(){
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioCtx.createOscillator();
+// 蜂鸣音效
+function beep(){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    oscillator.connect(gain);
+    osc.connect(gain);
     gain.connect(audioCtx.destination);
-    oscillator.type = 'sine';
-    oscillator.frequency.value = 800;
-    oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.3);
+    osc.type = 'sine';
+    osc.frequency.value = 900;
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.22);
+}
+
+function startAlarm(){
+    stopAlarm();
+    alarmLoop = setInterval(()=>beep(), 320);
+}
+function stopAlarm(){
+    if(alarmLoop){
+        clearInterval(alarmLoop);
+        alarmLoop = null;
+    }
 }
 
 function update(){
-    const targetStr = document.getElementById('targetTime').value;
-    const warnNum = Number(document.getElementById('warnSec').value);
-    const targetStamp = new Date(targetStr).getTime();
-    const now = Date.now();
-    const diff = targetStamp - now;
+    const total = parseFloat(document.getElementById('totalSec').value);
+    const warnVal = parseFloat(document.getElementById('warnSec').value);
 
-    if(diff <= 0){
-        document.getElementById('timeBox').innerText = "倒计时结束！";
-        clearInterval(timer);
-        return;
+    currentLeft -= 0.05;
+    if(currentLeft <= 0){
+        // 本轮结束，重置开启新一轮
+        currentLeft = total;
+        warned = false;
+        stopAlarm();
     }
 
-    let d = Math.floor(diff / 86400000);
-    let h = Math.floor((diff % 86400000) / 3600000);
-    let m = Math.floor((diff % 3600000) / 60000);
-    let s = Math.floor((diff % 60000) / 1000);
-    document.getElementById('timeBox').innerText = `${d}天 ${h}时 ${m}分 ${s}秒`;
+    document.getElementById('timeBox').innerText = currentLeft.toFixed(3) + " 秒";
 
-    // 到达预警时间触发提醒
-    if(warnNum > 0 && diff <= warnNum * 1000 && !warned){
-        playBeep();
-        alert("倒计时即将到达！");
+    // 到达预警条件，持续响铃
+    if(warnVal > 0 && currentLeft <= warnVal && !warned){
         warned = true;
+        startAlarm();
     }
 }
 
 function startTimer(){
     pauseTimer();
-    update();
-    timer = setInterval(update, 1000);
+    const total = parseFloat(document.getElementById('totalSec').value);
+    currentLeft = total;
+    warned = false;
+    stopAlarm();
+    timer = setInterval(update, 50);
 }
 
 function pauseTimer(){
@@ -130,8 +142,11 @@ function pauseTimer(){
 
 function resetTimer(){
     pauseTimer();
+    stopAlarm();
+    const total = parseFloat(document.getElementById('totalSec').value);
+    currentLeft = total;
     warned = false;
-    document.getElementById('timeBox').innerText = "00天 00时 00分 00秒";
+    document.getElementById('timeBox').innerText = currentLeft.toFixed(3) + " 秒";
 }
 </script>
 </body>
